@@ -1,17 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  query,
-  orderBy,
-  arrayUnion,
-  arrayRemove,
-} from 'firebase/firestore';
-import { db } from '../firebase';
+import { supabase, isSupabaseConfigured } from '../supabase';
 import { Issue, CreateIssueData, UpdateIssueData } from '../types';
 import { useAuth } from './AuthContext';
 import { localStorageService } from '../services/localStorageService';
@@ -50,33 +38,55 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    if (!db) {
-      console.error('Firestore not initialized. Please check your Firebase configuration.');
+    if (!isSupabaseConfigured()) {
+      console.error('Supabase not configured. Please check your Supabase configuration.');
       setLoading(false);
       return;
     }
 
-    const q = query(collection(db, 'issues'), orderBy('dateSubmitted', 'desc'));
+    const fetchIssues = async () => {
+      const { data, error } = await supabase!
+        .from('issues')
+        .select('*')
+        .order('date_submitted', { ascending: false });
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const issuesData: Issue[] = [];
-      querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        issuesData.push({
-          id: doc.id,
-          title: data.title,
-          description: data.description,
-          submittedBy: data.submittedBy,
-          dateSubmitted: data.dateSubmitted.toDate(),
-          upvotes: data.upvotes || [],
-          status: data.status || 'Pending',
-        });
-      });
+      if (error) {
+        console.error('Error fetching issues:', error);
+        setLoading(false);
+        return;
+      }
+
+      const issuesData: Issue[] = data.map((issue: any) => ({
+        id: issue.id,
+        title: issue.title,
+        description: issue.description,
+        submittedBy: issue.submitted_by,
+        dateSubmitted: new Date(issue.date_submitted),
+        upvotes: issue.upvotes || [],
+        status: issue.status || 'Pending',
+      }));
+
       setIssues(issuesData);
       setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    // Set up real-time subscription
+    const subscription = supabase!
+      .channel('issues')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'issues'
+      }, () => {
+        fetchIssues();
+      })
+      .subscribe();
+
+    fetchIssues();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, [isUsingLocalStorage]);
 
   const createIssue = async (data: CreateIssueData) => {
@@ -88,14 +98,21 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    if (!db) throw new Error('Firebase not configured');
-    await addDoc(collection(db, 'issues'), {
-      ...data,
-      submittedBy: currentUser.email,
-      dateSubmitted: new Date(),
+    if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
+
+    const { error } = await supabase!.from('issues').insert({
+      title: data.title,
+      description: data.description,
+      submitted_by: currentUser.email,
+      date_submitted: new Date().toISOString(),
       upvotes: [],
       status: 'Pending',
     });
+
+    if (error) {
+      console.error('Error creating issue:', error);
+      throw error;
+    }
   };
 
   const updateIssue = async (id: string, data: UpdateIssueData) => {
@@ -107,9 +124,22 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    if (!db) throw new Error('Firebase not configured');
-    const issueRef = doc(db, 'issues', id);
-    await updateDoc(issueRef, data as any);
+    if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
+
+    const updateData: any = {};
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.status !== undefined) updateData.status = data.status;
+
+    const { error } = await supabase!
+      .from('issues')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating issue:', error);
+      throw error;
+    }
   };
 
   const deleteIssue = async (id: string) => {
@@ -121,9 +151,17 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    if (!db) throw new Error('Firebase not configured');
-    const issueRef = doc(db, 'issues', id);
-    await deleteDoc(issueRef);
+    if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
+
+    const { error } = await supabase!
+      .from('issues')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting issue:', error);
+      throw error;
+    }
   };
 
   const upvoteIssue = async (id: string) => {
@@ -137,11 +175,40 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    if (!db) throw new Error('Firebase not configured');
-    const issueRef = doc(db, 'issues', id);
-    await updateDoc(issueRef, {
-      upvotes: arrayUnion(currentUser.email),
-    });
+    if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
+
+    // Get current upvotes
+    const { data: issue, error: fetchError } = await supabase!
+      .from('issues')
+      .select('upvotes')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching issue for upvote:', fetchError);
+      throw fetchError;
+    }
+
+    const currentUpvotes = issue.upvotes || [];
+    const updatedUpvotes = [...currentUpvotes, currentUser.email];
+
+    const { error } = await supabase!
+      .from('issues')
+      .update({ upvotes: updatedUpvotes })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error upvoting issue:', error);
+      throw error;
+    }
+
+    // Optimistically update local state so UI updates immediately
+    setIssues(prev => prev.map(existingIssue => {
+      if (existingIssue.id !== id) return existingIssue;
+      // Avoid duplicate emails if any race condition
+      const uniqueUpvotes = Array.from(new Set([...(existingIssue.upvotes || []), currentUser.email || ''].filter(Boolean)));
+      return { ...existingIssue, upvotes: uniqueUpvotes };
+    }));
   };
 
   const removeUpvote = async (id: string) => {
@@ -155,11 +222,39 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       return;
     }
 
-    if (!db) throw new Error('Firebase not configured');
-    const issueRef = doc(db, 'issues', id);
-    await updateDoc(issueRef, {
-      upvotes: arrayRemove(currentUser.email),
-    });
+    if (!isSupabaseConfigured()) throw new Error('Supabase not configured');
+
+    // Get current upvotes
+    const { data: issue, error: fetchError } = await supabase!
+      .from('issues')
+      .select('upvotes')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) {
+      console.error('Error fetching issue for remove upvote:', fetchError);
+      throw fetchError;
+    }
+
+    const currentUpvotes = issue.upvotes || [];
+    const updatedUpvotes = currentUpvotes.filter((email: string) => email !== currentUser.email);
+
+    const { error } = await supabase!
+      .from('issues')
+      .update({ upvotes: updatedUpvotes })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error removing upvote:', error);
+      throw error;
+    }
+
+    // Optimistically update local state so UI updates immediately
+    setIssues(prev => prev.map(existingIssue => {
+      if (existingIssue.id !== id) return existingIssue;
+      const filtered = (existingIssue.upvotes || []).filter((email: string) => email !== (currentUser.email || ''));
+      return { ...existingIssue, upvotes: filtered };
+    }));
   };
 
   const value = {

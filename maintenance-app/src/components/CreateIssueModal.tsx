@@ -35,7 +35,7 @@ const CreateIssueModal: React.FC<CreateIssueModalProps> = ({ onClose }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900">Report New Issue</h2>
+          <h2 className="text-xl font-bold text-gray-900">Report New Housing Task</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -60,7 +60,7 @@ const CreateIssueModal: React.FC<CreateIssueModalProps> = ({ onClose }) => {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-green-600 focus:border-green-600"
               placeholder="Brief description of the issue"
               maxLength={100}
               required
@@ -76,7 +76,7 @@ const CreateIssueModal: React.FC<CreateIssueModalProps> = ({ onClose }) => {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-green-600 focus:border-green-600"
               placeholder="Provide detailed information about the issue, including location and urgency"
               required
             />
@@ -93,7 +93,7 @@ const CreateIssueModal: React.FC<CreateIssueModalProps> = ({ onClose }) => {
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition duration-150 ease-in-out disabled:opacity-50"
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md transition duration-150 ease-in-out disabled:opacity-50"
             >
               {loading ? 'Submitting...' : 'Submit Issue'}
             </button>
