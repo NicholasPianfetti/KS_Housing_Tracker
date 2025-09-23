@@ -13,14 +13,13 @@
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>Kappa Sigma Housing Tasks</title>
     <script type="text/javascript">
-      // GitHub Pages SPA fallback: redirect to index with original path saved in query
-      (function(l) {
-        if (l.search) return;
-        var path = l.pathname.replace(/^\//, '');
-        if (path && path !== 'index.html') {
-          l.replace(l.protocol + '//' + l.host + l.pathname.replace(/404\.html$/, '') + '?p=' + encodeURIComponent(path + l.search + l.hash));
-        }
-      })(window.location);
+      // Redirect any unknown route to the app build for GitHub Pages
+      (function() {
+        var target = 'build/';
+        var qs = window.location.search || '';
+        var hash = window.location.hash || '';
+        window.location.replace(target + qs + hash);
+      })();
     </script>
   </head>
   <body>
