@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/KS_Housing_Tracker/static/css/main.82c36969.css",
+    "main.js": "/KS_Housing_Tracker/static/js/main.f2c82329.js",
+    "static/js/453.f229d852.chunk.js": "/KS_Housing_Tracker/static/js/453.f229d852.chunk.js",
+    "index.html": "/KS_Housing_Tracker/index.html",
+    "main.82c36969.css.map": "/KS_Housing_Tracker/static/css/main.82c36969.css.map",
+    "main.f2c82329.js.map": "/KS_Housing_Tracker/static/js/main.f2c82329.js.map",
+    "453.f229d852.chunk.js.map": "/KS_Housing_Tracker/static/js/453.f229d852.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.82c36969.css",
+    "static/js/main.f2c82329.js"
+  ]
+}
