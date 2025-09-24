@@ -20,17 +20,17 @@ const Header: React.FC = () => {
       animate={{ y: 0 }}
       transition={{ type: "spring", stiffness: 100, damping: 20 }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center py-3">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+        <div className="flex justify-between items-center py-2 sm:py-3">
           <motion.div
-            className="flex items-center space-x-4"
+            className="flex items-center space-x-2 sm:space-x-4"
             whileHover={{ scale: 1.02 }}
             transition={{ type: "spring", stiffness: 400, damping: 10 }}
           >
-            <img src="/KappaSigmaFraternityImage.png" alt="Kappa Sigma" className="h-16 w-auto" />
+            <img src="/KappaSigmaFraternityImage.png" alt="Kappa Sigma" className="h-12 sm:h-16 w-auto" />
             {isUsingLocalStorage && (
               <motion.span
-                className="px-3 py-1 bg-red-100 text-red-800 text-xs rounded-full font-semibold shadow-sm"
+                className="px-2 sm:px-3 py-1 bg-red-100 text-red-800 text-xs rounded-full font-semibold shadow-sm hidden sm:inline-block"
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
               >
@@ -39,9 +39,9 @@ const Header: React.FC = () => {
             )}
           </motion.div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <motion.span
-              className="text-sm font-medium"
+              className="text-xs sm:text-sm font-medium hidden sm:block"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
@@ -49,7 +49,7 @@ const Header: React.FC = () => {
               Welcome, <span className="font-semibold">{currentUser?.email}</span>
               {isAdmin && (
                 <motion.span
-                  className="ml-2 px-3 py-1 bg-green-500 text-xs rounded-full font-semibold shadow-md"
+                  className="ml-2 px-2 sm:px-3 py-1 bg-green-500 text-xs rounded-full font-semibold shadow-md"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: "spring", stiffness: 500, damping: 15 }}
@@ -60,7 +60,7 @@ const Header: React.FC = () => {
             </motion.span>
             <motion.button
               onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-sm font-semibold shadow-md transition-all duration-200"
+              className="bg-red-600 hover:bg-red-700 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-semibold shadow-md transition-all duration-200"
               whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(220, 38, 38, 0.5)" }}
               whileTap={{ scale: 0.95 }}
             >
