@@ -61,7 +61,7 @@ const Login: React.FC = () => {
           <p className="mt-2 text-center text-sm text-gray-600">
             {isUsingLocalStorage
               ? "Demo Mode - Use any authorized email with password 'demo123'"
-              : "Only authorized Kappa Sigma members can access this system"
+              : "Only authorized GT Kappa Sigma members can access this system"
             }
           </p>
           {isUsingLocalStorage && (
