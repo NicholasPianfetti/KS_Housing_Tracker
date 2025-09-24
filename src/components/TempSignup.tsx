@@ -105,7 +105,7 @@ const TempSignup: React.FC = () => {
               disabled={loading}
               className="w-full py-2 px-4 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'Create User'}
+              {loading ? 'Creating..' : 'Create User'}
             </button>
           </form>
 
