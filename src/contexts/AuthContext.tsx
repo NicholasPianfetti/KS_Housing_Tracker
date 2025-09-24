@@ -111,7 +111,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Local storage mode - check for saved user
       const savedUser = localStorageService.getCurrentUser();
       setCurrentUser(savedUser);
-      setIsAdmin(savedUser?.email === 'admin@fraternity.edu');
+      // Note: Local storage mode doesn't have admin functionality
+      setIsAdmin(false);
       setLoading(false);
 
       // Initialize sample data
@@ -121,6 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     let isMounted = true;
     let loadingTimeout: number | undefined;
+    let hasInitialSession = false;
 
     loadingTimeout = window.setTimeout(() => {
       if (isMounted) {
@@ -129,60 +131,85 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }, 3000);
 
-    const initializeAuthState = async () => {
-      console.debug('[Auth] Initializing auth state...');
+    const checkAdminStatus = async (user: User) => {
       try {
-        const { data, error } = await supabase!.auth.getSession();
-        if (error) {
-          console.error('Error getting initial session:', error);
-        }
-        const user = data?.session?.user ?? null;
-        if (!isMounted) return;
-        setCurrentUser(user);
+        console.log('[Auth] Querying profile for user:', user.id, user.email);
 
-        if (user) {
-          const { data: profileData } = await supabase!
-            .from('profiles')
-            .select('is_admin')
-            .eq('id', user.id)
-            .single();
-          if (!isMounted) return;
-          setIsAdmin(profileData?.is_admin ?? false);
-        } else {
-          setIsAdmin(false);
+        const { data: profileData, error: profileError } = await supabase!
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .single();
+
+        console.log('[Auth] Profile query completed:', { profileData, profileError });
+
+        if (profileError) {
+          console.error('[Auth] Profile query error:', profileError);
+          console.error('[Auth] Could not determine admin status from database');
+          return false;
         }
-        setLoading(false);
+
+        const isAdmin = profileData?.is_admin ?? false;
+        console.log('[Auth] Admin status from DB:', isAdmin, 'for', user.email);
+        return isAdmin;
       } catch (e) {
-        console.error('Unexpected error initializing auth state:', e);
-        if (!isMounted) return;
-        setLoading(false);
+        console.error('[Auth] Profile query exception:', e);
+        console.error('[Auth] Could not determine admin status from database');
+        return false;
       }
     };
 
-    initializeAuthState();
-
-    // Set up Supabase auth state listener for subsequent changes
+    // Set up auth state listener FIRST (this is the recommended Supabase pattern)
     const { data: { subscription } } = supabase!.auth.onAuthStateChange(
       async (event, session) => {
-        console.debug('[Auth] onAuthStateChange event:', event);
+        console.log('[Auth] Auth state change:', event);
         const user = session?.user ?? null;
         if (!isMounted) return;
+
+        // Skip the early SIGNED_IN event on initial load, wait for INITIAL_SESSION
+        if (event === 'SIGNED_IN' && !hasInitialSession) {
+          console.log('[Auth] Skipping early SIGNED_IN, waiting for INITIAL_SESSION');
+          return;
+        }
+
+        if (event === 'INITIAL_SESSION') {
+          hasInitialSession = true;
+        }
+
         setCurrentUser(user);
 
         if (user) {
-          const { data: profileData } = await supabase!
-            .from('profiles')
-            .select('is_admin')
-            .eq('id', user.id)
-            .single();
-          if (!isMounted) return;
-          setIsAdmin(profileData?.is_admin ?? false);
+          const isAdminUser = await checkAdminStatus(user);
+          if (isMounted) {
+            setIsAdmin(isAdminUser);
+          }
         } else {
           setIsAdmin(false);
         }
-        setLoading(false);
+
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     );
+
+    // Then get initial session (this triggers the listener above)
+    const initSession = async () => {
+      console.log('[Auth] Getting initial session...');
+      const { data: { session } } = await supabase!.auth.getSession();
+
+      if (!isMounted) return;
+
+      // The listener will handle state updates, but we need to ensure loading is set to false
+      if (!session) {
+        setCurrentUser(null);
+        setIsAdmin(false);
+        setLoading(false);
+      }
+      // If there is a session, the listener already handled it
+    };
+
+    initSession();
 
     return () => {
       isMounted = false;

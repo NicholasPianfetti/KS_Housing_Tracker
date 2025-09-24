@@ -30,31 +30,40 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const { currentUser, isUsingLocalStorage } = useAuth();
 
   useEffect(() => {
+    console.log('[Issues] Initializing issues context, isUsingLocalStorage:', isUsingLocalStorage);
+
     if (isUsingLocalStorage) {
       // Load issues from local storage
+      console.log('[Issues] Using local storage mode');
       const localIssues = localStorageService.getIssues();
+      console.log('[Issues] Loaded issues from local storage:', localIssues.length);
       setIssues(localIssues);
       setLoading(false);
       return;
     }
 
     if (!isSupabaseConfigured()) {
-      console.error('Supabase not configured. Please check your Supabase configuration.');
+      console.error('[Issues] Supabase not configured. Please check your Supabase configuration.');
       setLoading(false);
       return;
     }
 
+    console.log('[Issues] Using Supabase mode');
+
     const fetchIssues = async () => {
+      console.log('[Issues] Fetching issues from Supabase...');
       const { data, error } = await supabase!
         .from('issues')
         .select('*')
         .order('date_submitted', { ascending: false });
 
       if (error) {
-        console.error('Error fetching issues:', error);
+        console.error('[Issues] Error fetching issues:', error);
         setLoading(false);
         return;
       }
+
+      console.log('[Issues] Fetched issues from Supabase:', data?.length || 0);
 
       const issuesData: Issue[] = data.map((issue: any) => ({
         id: issue.id,
@@ -68,9 +77,11 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
       setIssues(issuesData);
       setLoading(false);
+      console.log('[Issues] Issues loaded successfully');
     };
 
     // Set up real-time subscription
+    console.log('[Issues] Setting up real-time subscription...');
     const subscription = supabase!
       .channel('issues')
       .on('postgres_changes', {
@@ -78,6 +89,7 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         schema: 'public',
         table: 'issues'
       }, () => {
+        console.log('[Issues] Real-time update received, refetching...');
         fetchIssues();
       })
       .subscribe();
@@ -85,6 +97,7 @@ export const IssuesProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     fetchIssues();
 
     return () => {
+      console.log('[Issues] Cleaning up issues context');
       subscription.unsubscribe();
     };
   }, [isUsingLocalStorage]);
