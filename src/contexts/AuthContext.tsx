@@ -119,29 +119,78 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
 
-    // Set up Supabase auth state listener
-    const { data: { subscription } } = supabase!.auth.onAuthStateChange(
-      async (event, session) => {
-        const user = session?.user ?? null;
+    let isMounted = true;
+    let loadingTimeout: number | undefined;
+
+    loadingTimeout = window.setTimeout(() => {
+      if (isMounted) {
+        console.warn('[Auth] Auth initialization timeout - forcing loading to false');
+        setLoading(false);
+      }
+    }, 3000);
+
+    const initializeAuthState = async () => {
+      console.debug('[Auth] Initializing auth state...');
+      try {
+        const { data, error } = await supabase!.auth.getSession();
+        if (error) {
+          console.error('Error getting initial session:', error);
+        }
+        const user = data?.session?.user ?? null;
+        if (!isMounted) return;
         setCurrentUser(user);
 
         if (user) {
-          const { data } = await supabase!
+          const { data: profileData } = await supabase!
             .from('profiles')
             .select('is_admin')
             .eq('id', user.id)
             .single();
-
-          setIsAdmin(data?.is_admin ?? false);
+          if (!isMounted) return;
+          setIsAdmin(profileData?.is_admin ?? false);
         } else {
           setIsAdmin(false);
         }
+        setLoading(false);
+      } catch (e) {
+        console.error('Unexpected error initializing auth state:', e);
+        if (!isMounted) return;
+        setLoading(false);
+      }
+    };
 
+    initializeAuthState();
+
+    // Set up Supabase auth state listener for subsequent changes
+    const { data: { subscription } } = supabase!.auth.onAuthStateChange(
+      async (event, session) => {
+        console.debug('[Auth] onAuthStateChange event:', event);
+        const user = session?.user ?? null;
+        if (!isMounted) return;
+        setCurrentUser(user);
+
+        if (user) {
+          const { data: profileData } = await supabase!
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', user.id)
+            .single();
+          if (!isMounted) return;
+          setIsAdmin(profileData?.is_admin ?? false);
+        } else {
+          setIsAdmin(false);
+        }
         setLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+      if (loadingTimeout) {
+        window.clearTimeout(loadingTimeout);
+      }
+    };
   }, []);
 
   const value = {
@@ -155,5 +204,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isUsingLocalStorage,
   };
 
-  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-lg text-gray-600">Loading...</div>
+      </div>
+    );
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

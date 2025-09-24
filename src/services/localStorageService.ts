@@ -22,20 +22,32 @@ class LocalStorageService {
 
   getCurrentUser(): MockUser | null {
     const userStr = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    return userStr ? JSON.parse(userStr) : null;
+    if (!userStr) return null;
+    try {
+      return JSON.parse(userStr);
+    } catch (e) {
+      console.warn('Corrupted current user in localStorage. Clearing it.', e);
+      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+      return null;
+    }
   }
 
   // Issues Management
   getIssues(): Issue[] {
     const issuesStr = localStorage.getItem(STORAGE_KEYS.ISSUES);
     if (!issuesStr) return [];
-
-    const issues = JSON.parse(issuesStr);
-    // Convert date strings back to Date objects
-    return issues.map((issue: any) => ({
-      ...issue,
-      dateSubmitted: new Date(issue.dateSubmitted),
-    }));
+    try {
+      const issues = JSON.parse(issuesStr);
+      // Convert date strings back to Date objects
+      return issues.map((issue: any) => ({
+        ...issue,
+        dateSubmitted: new Date(issue.dateSubmitted),
+      }));
+    } catch (e) {
+      console.warn('Corrupted issues in localStorage. Clearing them.', e);
+      localStorage.removeItem(STORAGE_KEYS.ISSUES);
+      return [];
+    }
   }
 
   saveIssues(issues: Issue[]): void {
