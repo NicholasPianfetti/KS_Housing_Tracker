@@ -17,7 +17,7 @@ const Header: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           <div className="flex items-center space-x-3">
-            <h1 className="text-xl font-bold">Kappa Sigma Housing Tasks</h1>
+            <img src="/KappaSigmaFraternityImage.png" alt="Kappa Sigma" className="h-10" />
             {isUsingLocalStorage && (
               <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded-full font-medium">
                 Demo Mode

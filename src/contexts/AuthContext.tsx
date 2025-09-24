@@ -32,15 +32,10 @@ const AUTHORIZED_EMAILS = [
   'member2@fraternity.edu',
 ];
 
-const ADMIN_EMAILS = [
-  'admin@fraternity.edu',
-  'maintenance@fraternity.edu',
-  'nickpisme4@gmail.com'
-];
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<MockUser | User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const isUsingLocalStorage = !isSupabaseConfigured();
 
   const login = async (email: string, password: string) => {
@@ -110,13 +105,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAuthorized = currentUser ? AUTHORIZED_EMAILS.includes(currentUser.email || '') : false;
-  const isAdmin = currentUser ? ADMIN_EMAILS.includes(currentUser.email || '') : false;
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
       // Local storage mode - check for saved user
       const savedUser = localStorageService.getCurrentUser();
       setCurrentUser(savedUser);
+      setIsAdmin(savedUser?.email === 'admin@fraternity.edu');
       setLoading(false);
 
       // Initialize sample data
@@ -126,8 +121,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Set up Supabase auth state listener
     const { data: { subscription } } = supabase!.auth.onAuthStateChange(
-      (event, session) => {
-        setCurrentUser(session?.user ?? null);
+      async (event, session) => {
+        const user = session?.user ?? null;
+        setCurrentUser(user);
+
+        if (user) {
+          const { data } = await supabase!
+            .from('profiles')
+            .select('is_admin')
+            .eq('id', user.id)
+            .single();
+
+          setIsAdmin(data?.is_admin ?? false);
+        } else {
+          setIsAdmin(false);
+        }
+
         setLoading(false);
       }
     );
